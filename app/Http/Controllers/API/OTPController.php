@@ -72,6 +72,7 @@ class OTPController extends Controller
                         return response()->json([
                             "status"=>true,
                             "message"=>"otp sent successfully",
+                            "phone"=>$request->phone,
                            
                         ]);
                     
@@ -122,7 +123,7 @@ class OTPController extends Controller
                     return response()->json([
                             "status"=>true,
                             "message"=>"otp sent successfully",
-                            "data"=>Session::get('otp_verification')
+                            "phone"=>$request->phone,
                         ]);
                 }
             }catch (\Exception $e) {
@@ -207,6 +208,7 @@ class OTPController extends Controller
                 $user = User::create([
                     'uuid'=> Str::uuid(),
                     'phone' => $request->phone,
+                    'phone_verified_at' => now(),
                     'country_code_id' => 1,
                     'is_active' => true,
                 ]);
@@ -214,11 +216,13 @@ class OTPController extends Controller
              
                 Auth::login($user);
                 OTP::where('phone', $request->phone)->delete();
-
+                 $user->tokens()->delete();
+                $token = $user->createToken('api')->plainTextToken;
                 return response()->json([
                     "status"=>true,
                     "message"=>"otp verified successfully",
                     "code"=>Auth::user()->id,
+                    "token"=>$token,
                 ]);
                     
                

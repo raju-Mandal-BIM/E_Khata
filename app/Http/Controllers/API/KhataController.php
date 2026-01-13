@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Khata;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 
 
 class KhataController extends Controller
@@ -24,24 +26,32 @@ class KhataController extends Controller
      */
     public function create(Request $request)
     {
-        $validatedData = $request->validate([
+        $user = Auth::user();
+        $validatedData = Validator::make($request->all(),[
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:10|unique:khatas,phone',
+            'phone' => ['required','max:10',Rule::unique('khatas')->where(fn($query) => $query->where('user_id', $user->id))],
             'country_code_id' => 'required|integer',
         ]);
-        if($validatedData->fails()){
-            return response()->json([
-                'status' => false,
-                'message' => 'Validation Error',
-                'errors' => $validatedData->errors()
-            ], 422);
-        }
+        $khataExists = Khata::where('user_id', $user->id)
+                        ->where('phone', $request->phone)
+                        ->first();
+   
+        if ($validatedData->fails()) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Validation errors',
+            'errors' => $validatedData->errors(),
+            'khata_id' => $khataExists ? $khataExists->id : null,
+        ], 422);
+    }
+ 
     try {
             $khata = Khata::create([
                 'user_id' => Auth::id(),
                 'name' => $validatedData['name'],
                 'phone' => $validatedData['phone'],
-                'country_code_id' => $validatedData['country_code_id'],
+                'country_code_id' => 1,
+                'synced_at' => date('Y-m-d'),
             ]);
 
             return response()->json([

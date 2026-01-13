@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('type')->default('individual');//group or individual
             $table->string('name');
-            $table->bigInteger('phone')->unique();
+            $table->bigInteger('phone');
             $table->date('synced_at');
             $table->string('address')->nullable();
             $table->string('email')->nullable();
@@ -28,7 +28,9 @@ return new class extends Migration
             $table->date('last_transaction_date')->nullable();
             $table->string('last_transaction_type')->nullable();
             $table->foreignId('country_code_id')->constrained()->cascadeOnDelete();
+            $table->unique(['user_id', 'phone']);
             $table->timestamps();
+            
         });
     }
 
