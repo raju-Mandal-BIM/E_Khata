@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('type')->default('individual');//group or individual
             $table->string('name');
             $table->bigInteger('phone');
-            $table->date('synced_at');
+            $table->string('photo')->nullable();
+            $table->timestamp('synced_at')->nullable();
             $table->string('address')->nullable();
             $table->string('email')->nullable();
             $table->string('color')->nullable();
@@ -25,7 +26,7 @@ return new class extends Migration
             $table->bigInteger('received_amount')->default(0);
             $table->bigInteger('due_amount')->default(0);
             $table->string('last_transaction_note')->nullable();
-            $table->date('last_transaction_date')->nullable();
+            $table->timestamp('last_transaction_date')->nullable();
             $table->string('last_transaction_type')->nullable();
             $table->foreignId('country_code_id')->constrained()->cascadeOnDelete();
             $table->unique(['user_id', 'phone']);

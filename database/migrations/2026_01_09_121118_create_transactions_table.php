@@ -11,22 +11,33 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('transactions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('khata_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('note')->nullable();
-            $table->bigInteger('amount');
-            $table->string('attachment')->nullable();
-            $table->string('status');//synced , not synced,edited
-            $table->string('type');
-            $table->date('transaction_date');
-            $table->date('due_date')->nullable();
-            $table->boolean('is_edited')->default(0);
-            $table->integer('edit_count')->default(0);
+        DB::statement("
+            CREATE TABLE transactions (
+                id BIGSERIAL,
+                khata_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                note VARCHAR(255),
+                amount BIGINT NOT NULL,
+                attachment VARCHAR(255),
+                status VARCHAR(50) NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                transaction_date DATE NOT NULL,
+                due_date DATE,
+                is_edited BOOLEAN DEFAULT FALSE,
+                edit_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP NOT NULL,
+                updated_at TIMESTAMP NOT NULL,
 
-            $table->timestamps();
-        });
+                PRIMARY KEY (id, created_at),
+
+                CONSTRAINT transactions_khata_id_fk
+                    FOREIGN KEY (khata_id) REFERENCES khatas(id) ON DELETE CASCADE,
+
+                CONSTRAINT transactions_user_id_fk
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) PARTITION BY RANGE (created_at);
+        ");
+
     }
 
     /**

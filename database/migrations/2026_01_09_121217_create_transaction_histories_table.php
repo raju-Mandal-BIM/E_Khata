@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('transaction_histories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('transaction_id')->constrained()->cascadeOnDelete();
+          
+            $table->foreign(['id', 'created_at'])->references(['id', 'created_at'])->on('transactions')->onDelete('cascade');
             $table->integer('edit_number')->default(0);
             $table->string('old_note')->nullable();
             $table->string('new_note')->nullable();

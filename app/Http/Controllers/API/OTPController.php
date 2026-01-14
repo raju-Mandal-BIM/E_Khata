@@ -11,6 +11,7 @@ use App\Services\OtpService;
 use App\Models\OTP;
 use Illuminate\Support\Str;
 use App\Models\CountryCode;
+use App\Models\Khata;
 class OTPController extends Controller
 {
     protected $otpService;
@@ -48,17 +49,7 @@ class OTPController extends Controller
                 }else{
                     try {
                       
-                        // $result = $this->otpService->sendOtp(
-                        //     $request->phone,
-                        //     'login',
-                        //     $request->ip(),
-                        //     $request->userAgent()
-                        // );
-
-                        // // Store demo OTP for local environment
-                        // if (app()->environment('local', 'testing')) {
-                        //     Session::put('demo_otp', '123456');
-                        // }
+                        
                         //store otp in otp table
                         $otpCode = '123456'; 
                         $resOtp = OTP::where('phone', $request->phone)->where('created', date('Y-m-d'))->orderBy('created_at', 'desc')->first();
@@ -86,22 +77,6 @@ class OTPController extends Controller
         }else{
             try {
             
-                // $result = $this->otpService->sendOtp(
-                //     $request->phone,
-                //     'login',
-                //     $request->ip(),
-                //     $request->userAgent()
-                // );
-                // // Store verification data in session
-                // Session::put('otp_verification', [
-                //     'phone' => $request->phone,
-                //     'expires_at' => now()->addMinutes(5)
-                // ]);   
-
-                //   // Store demo OTP for local environment
-                // if (app()->environment('local', 'testing')) {
-                //     Session::put('demo_otp', '123456');
-                // }
                 
                 $resOtp = OTP::where('phone', $request->phone)->where('created', date('Y-m-d'))->orderBy('created_at', 'desc')->first();
                 if($resOtp && $resOtp->created_at > now()->subHour() && $resOtp->count >= 3){
@@ -140,62 +115,16 @@ class OTPController extends Controller
             'phone' => 'required|digits:10'
         ]);
 
-        // if (!Session::has('otp_verification')) {
-        //     return response()->json([
-        //         "status"=>false,
-        //         "message"=>"No OTP verification session found. Please request a new OTP.",
-        //         'redirect_to' => '/login',
-        //         "data"=>Session::get('otp_verification')
-        //     ], 401);
-        // }
-
-        // $verificationData = Session::get('otp_verification');
 
         try {
-            // $result = $this->otpService->verifyOtp(
-            //     $verificationData['phone'],
-            //     $request->otp,
-            //     'login',
-            //     $request->ip(),
-            //     $request->userAgent()
-            // );
-           
-            // // Clear OTP session data
-            // Session::forget('otp_verification');
-            // Session::forget('demo_otp');
-
-            // if (!isset($verificationData['user_id'])) {
-            //     // For new users, store phone in session and redirect to registration
-            //     Session::put('registration_phone', $verificationData['phone']);
-            //     Session::put('registration_verified', true);
-
-            //     return redirect()->route('api.register')
-            //         ->with('success', 'Phone verified successfully! Please complete your registration.');
-            // } else {
-            //     // For existing users, login and redirect to dashboard
-            //     return response()->json([
-            //             "status"=>true,
-            //             "message"=>"otp verified hahah successfully",
-            //         ]);
-            //     $user = $result['user'];
-            //     Auth::login($user);
-
-            //     // Clear any temporary user data if exists
-            //     if (!$user->is_active) {
-            //         $user->update([
-            //             'is_active' => true,
-            //             'name' => 'User_' . $user->phone, // Set a temporary name
-            //         ]);
-            //     }
-
-            //     return redirect()->route('dashboard')
-            //         ->with('success', 'Welcome back, ' . ($user->name ?? 'User') . '!');
-            // }
-            // $CountryCode =CountryCode::create([
-            //     'country_name' => 'Nepal',
-            //     'country_code' => 977,
+       
+        if(!CountryCode::where('country_code', 977)->exists()){
+            $CountryCode =CountryCode::create([
+                'country_name' => 'Nepal',
+                'country_code' => 977,
               
-            // ]);
+            ]);
+        }
             $CountryCode = CountryCode::where('country_code', 977)->first();
 
             $otpRecord = OTP::where('phone', $request->phone)
@@ -209,21 +138,42 @@ class OTPController extends Controller
                     'uuid'=> Str::uuid(),
                     'phone' => $request->phone,
                     'phone_verified_at' => now(),
-                    'country_code_id' => 1,
+                    'country_code_id' => $CountryCode->id,
                     'is_active' => true,
                 ]);
                 }
              
                 Auth::login($user);
                 OTP::where('phone', $request->phone)->delete();
-                 $user->tokens()->delete();
+                $user->tokens()->delete();
                 $token = $user->createToken('api')->plainTextToken;
+               
+                $khatas = Khata::where('user_id', $user->id)->orderBy('updated_at', 'desc')->get();
+
+                if($khatas->isEmpty()){
+                    return response()->json([
+                    "status"=>true,
+                    "message"=>"otp verified successfully",
+                    "code"=>Auth::user()->id,
+                    "token"=>$token,
+                  
+                ]);
+                }else{
+                $res = $this->totalAmount();
+                $userData = User::where('id', Auth::id())->first();
                 return response()->json([
                     "status"=>true,
                     "message"=>"otp verified successfully",
                     "code"=>Auth::user()->id,
                     "token"=>$token,
+                    "name"=>$userData,
+                    "amount"=>$res->original['amount'],
+                    "type"=>$res->original['type'],
+                    "khatas"=>$khatas,
                 ]);
+                }
+                    
+           
                     
                
             }else{
@@ -235,6 +185,25 @@ class OTPController extends Controller
         } catch (\Exception $e) {
             return $e->getMessage() ;
         }
+    }
+    public function totalAmount()
+    {
+        $user = Auth::user();
+        $khatas = Khata::where('user_id', $user->id)->get();
+        $received_amount = 0;
+        $due_amount = 0;
+        foreach ($khatas as $khata) {
+            $received_amount += $khata->received_amount;
+            $due_amount += $khata->due_amount;
+
+        }
+        $amount = $received_amount > $due_amount ? $received_amount - $due_amount : $due_amount - $received_amount;
+        $type = $received_amount > $due_amount ? 'receivable' : 'payable';
+        return response()->json([
+            'status' => true,
+            'amount' => $amount,
+            'type' => $type,
+        ]);
     }
 
 }

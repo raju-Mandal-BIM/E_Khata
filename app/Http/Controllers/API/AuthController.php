@@ -47,12 +47,12 @@ class AuthController extends Controller
                 $image = 'images/profile_images/'.$imageName;
             }
             $user_id = Auth::user()->id;
+            $userData = User::where('id', $user_id)->first();
             $user = User::where('id', $user_id)->update([
-                'name'=>$request->name,
-                'email'=>$request->email,
-                'email_verified_at'=>now(),
-                'address'=>$request->address,
-                'profile_image'=>$image,]);
+                'name'=>$request->name?$request->name:$userData->name,
+                'email'=>$request->email?$request->email:$userData->email,
+                'address'=>$request->address?$request->address:$userData->address,
+                'profile_image'=>$image?$image:$userData->profile_image]);
 
             return response()->json([
                 'status' => true,
